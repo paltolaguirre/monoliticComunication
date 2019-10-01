@@ -5,11 +5,15 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/xubiosueldos/conexionBD/Autenticacion/structAutenticacion"
+	"github.com/xubiosueldos/conexionBD/Legajo/structLegajo"
+	"github.com/xubiosueldos/framework"
+	"github.com/xubiosueldos/framework/configuracion"
 )
 
 func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string, url string) string {
@@ -58,12 +62,30 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *s
 	return str
 }
 
-func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string, url string) string {
-	str := reqMonolitico(w, r, tokenAutenticacion, codigo, id, options, url)
-	return str
+func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) structLegajo.Centrodecosto {
+	url := configuracion.GetUrlMonolitico() + "centrodecostoGoServlet"
+	var centroDeCosto structLegajo.Centrodecosto
+	str := reqMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY", url)
+	json.Unmarshal([]byte(str), &centroDeCosto)
+	return centroDeCosto
 }
 
-func ChequeoAuthenticationMonolitico(tokenEncode string, url string, r *http.Request) bool {
+type requestMono struct {
+	Value interface{}
+	Error error
+}
+
+func (s *requestMono) Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
+	url := configuracion.GetUrlMonolitico() + "cuentaGoServlet"
+	str := reqMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY", url)
+	if str == "0" {
+		framework.RespondError(w, http.StatusNotFound, "Cuenta Inexistente")
+		s.Error = errors.New("Cuenta Inexistente")
+	}
+	return s
+}
+
+func CheckAuthenticationMonolitico(tokenEncode string, url string, r *http.Request) bool {
 
 	infoUserValida := false
 	var prueba []byte = []byte("xubiosueldosimplementadocongo")
