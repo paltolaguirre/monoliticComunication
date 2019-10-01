@@ -75,7 +75,8 @@ type requestMono struct {
 	Error error
 }
 
-func (s *requestMono) Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
+func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
+	var s *requestMono
 	url := configuracion.GetUrlMonolitico() + "cuentaGoServlet"
 	str := reqMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY", url)
 	if str == "0" {
