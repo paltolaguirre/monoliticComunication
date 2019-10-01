@@ -9,14 +9,22 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/xubiosueldos/conexionBD/Autenticacion/structAutenticacion"
+	"github.com/xubiosueldos/conexionBD/Helper/structHelper"
 	"github.com/xubiosueldos/conexionBD/Legajo/structLegajo"
 	"github.com/xubiosueldos/framework"
 	"github.com/xubiosueldos/framework/configuracion"
 )
 
-func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string, url string) string {
+type requestMono struct {
+	Value interface{}
+	Error error
+}
+
+func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string) string {
 	var strReqMonolitico strRequestMonolitico
 	token := *tokenAutenticacion
 	strReqMonolitico.Options = options
@@ -27,7 +35,7 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *s
 
 	pagesJson, err := json.Marshal(strReqMonolitico)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
+	url := configuracion.GetUrlMonolitico() + codigo + "GoServlet"
 	fmt.Println("URL:>", url)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(pagesJson))
 
@@ -63,22 +71,16 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *s
 }
 
 func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) structLegajo.Centrodecosto {
-	url := configuracion.GetUrlMonolitico() + "centrodecostoGoServlet"
 	var centroDeCosto structLegajo.Centrodecosto
-	str := reqMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY", url)
+	str := reqMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY")
 	json.Unmarshal([]byte(str), &centroDeCosto)
 	return centroDeCosto
 }
 
-type requestMono struct {
-	Value interface{}
-	Error error
-}
-
 func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
 	var s *requestMono
-	url := configuracion.GetUrlMonolitico() + "cuentaGoServlet"
-	str := reqMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY", url)
+
+	str := reqMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY")
 	if str == "0" {
 		framework.RespondError(w, http.StatusNotFound, "Cuenta Inexistente")
 		s.Error = errors.New("Cuenta Inexistente")
@@ -86,14 +88,45 @@ func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacio
 	return s
 }
 
-func CheckAuthenticationMonolitico(tokenEncode string, url string, r *http.Request) bool {
+func Checkexistebanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
+	var s *requestMono
+
+	str := reqMonolitico(w, r, tokenAutenticacion, "banco", id, "CANQUERY")
+	if str == "0" {
+		framework.RespondError(w, http.StatusNotFound, "Banco Inexistente")
+		s.Error = errors.New("Banco Inexistente")
+	}
+	return s
+}
+
+func Obtenercodigohelper(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
+
+	var s *requestMono
+	str := reqMonolitico(w, r, tokenAutenticacion, codigo, id, "HLP")
+
+	fixUtf := func(r rune) rune {
+		if r == utf8.RuneError {
+			return -1
+		}
+		return r
+	}
+
+	var dataStruct []structHelper.Helper
+	json.Unmarshal([]byte(strings.Map(fixUtf, str)), &dataStruct)
+
+	framework.RespondJSON(w, http.StatusOK, dataStruct)
+
+	return s
+}
+
+func CheckAuthenticationMonolitico(tokenEncode string, r *http.Request) bool {
 
 	infoUserValida := false
 	var prueba []byte = []byte("xubiosueldosimplementadocongo")
 	tokenSecurity := base64.StdEncoding.EncodeToString(prueba)
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
+	url := configuracion.GetUrlMonolitico() + "SecurityAuthenticationGo"
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {
