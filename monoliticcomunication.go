@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/xubiosueldos/conexionBD/Autenticacion/structAutenticacion"
 	"github.com/xubiosueldos/conexionBD/Helper/structHelper"
 	"github.com/xubiosueldos/conexionBD/Legajo/structLegajo"
+	"github.com/xubiosueldos/conexionBD/Liquidacion/structLiquidacion"
 	"github.com/xubiosueldos/framework"
 	"github.com/xubiosueldos/framework/configuracion"
 )
@@ -22,6 +21,18 @@ import (
 type requestMono struct {
 	Value interface{}
 	Error error
+}
+
+type strCuentaImporte struct {
+	Cuentaid      int     `json:"cuentaid"`
+	Importecuenta float32 `json:"importecuenta"`
+}
+
+type strContabilizarDescontabilizar struct {
+	requestMonolitico          strRequestMonolitico
+	Descripcion                string             `json:"descripcion"`
+	Cuentasimportes            []strCuentaImporte `json:"cuentasimportes"`
+	Asientomanualtransaccionid int                `json:"asientomanualtransaccionid"`
 }
 
 func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string) string {
@@ -70,53 +81,73 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *s
 	return str
 }
 
-func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) structLegajo.Centrodecosto {
+func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLegajo.Centrodecosto {
 	var centroDeCosto structLegajo.Centrodecosto
 	str := reqMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY")
 	json.Unmarshal([]byte(str), &centroDeCosto)
-	return centroDeCosto
+	return &centroDeCosto
+}
+
+func Checkexistecentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
+	var s requestMono
+	centroDeCosto := Obtenercentrodecosto(w, r, tokenAutenticacion, id)
+	if centroDeCosto.ID == 0 {
+		s.Error = errors.New("El Centro de costo con ID: " + id + " no existe")
+	}
+
+	return &s
 }
 
 func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
-	var s *requestMono
+	var s requestMono
 
 	str := reqMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY")
 	if str == "0" {
-		framework.RespondError(w, http.StatusNotFound, "Cuenta Inexistente")
-		s.Error = errors.New("Cuenta Inexistente")
+		s.Error = errors.New("La Cuenta con ID: " + id + " no existe")
 	}
-	return s
+	return &s
+}
+
+func Obtenerbanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLiquidacion.Banco {
+	var banco structLiquidacion.Banco
+	str := reqMonolitico(w, r, tokenAutenticacion, "banco", id, "CANQUERY")
+	json.Unmarshal([]byte(str), &banco)
+	return &banco
 }
 
 func Checkexistebanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
-	var s *requestMono
-
-	str := reqMonolitico(w, r, tokenAutenticacion, "banco", id, "CANQUERY")
-	if str == "0" {
-		framework.RespondError(w, http.StatusNotFound, "Banco Inexistente")
-		s.Error = errors.New("Banco Inexistente")
+	var s requestMono
+	banco := Obtenerbanco(w, r, tokenAutenticacion, id)
+	if banco.ID == 0 {
+		s.Error = errors.New("El Banco con ID: " + id + " no existe")
 	}
-	return s
+
+	return &s
 }
 
-func Obtenercodigohelper(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
+func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
 
-	var s *requestMono
+	var s requestMono
 	str := reqMonolitico(w, r, tokenAutenticacion, codigo, id, "HLP")
 
-	fixUtf := func(r rune) rune {
-		if r == utf8.RuneError {
-			return -1
-		}
-		return r
-	}
+	var dataHelper []structHelper.Helper
+	json.Unmarshal([]byte(str), &dataHelper)
+	framework.RespondJSON(w, http.StatusOK, dataHelper)
 
-	var dataStruct []structHelper.Helper
-	json.Unmarshal([]byte(strings.Map(fixUtf, str)), &dataStruct)
+	return &s
+}
 
-	framework.RespondJSON(w, http.StatusOK, dataStruct)
+func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
+	var emp requestMono
+	str := reqMonolitico(w, r, tokenAutenticacion, codigo, id, "CANQUERY")
 
-	return s
+	var dataEmpresa structHelper.Empresa
+	json.Unmarshal([]byte(str), &dataEmpresa)
+
+	framework.RespondJSON(w, http.StatusOK, dataEmpresa)
+
+	return &emp
+
 }
 
 func CheckAuthenticationMonolitico(tokenEncode string, r *http.Request) bool {
