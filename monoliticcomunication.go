@@ -28,14 +28,27 @@ type strCuentaImporte struct {
 	Importecuenta float32 `json:"importecuenta"`
 }
 
-type strContabilizarDescontabilizar struct {
+type strLiquidacionContabilizar struct {
 	requestMonolitico          strRequestMonolitico
 	Descripcion                string             `json:"descripcion"`
 	Cuentasimportes            []strCuentaImporte `json:"cuentasimportes"`
 	Asientomanualtransaccionid int                `json:"asientomanualtransaccionid"`
 }
 
-func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string) string {
+type StrDatosAsientoContableManual struct {
+	Asientocontablemanualid     int    `json:"asientocontablemanualid"`
+	Asientocontablemanualnombre string `json:"asientocontablemanualnombre"`
+}
+
+func conectarconMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string) string {
+	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, id, options)
+	str := reqMonolitico(w, r, codigo, strReqMonolitico)
+
+	return str
+
+}
+
+func llenarstructRequestMonolitico(tokenAutenticacion *structAutenticacion.Security, id string, options string) *strRequestMonolitico {
 	var strReqMonolitico strRequestMonolitico
 	token := *tokenAutenticacion
 	strReqMonolitico.Options = options
@@ -44,9 +57,16 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *s
 	strReqMonolitico.Username = token.Username
 	strReqMonolitico.Id = id
 
-	pagesJson, err := json.Marshal(strReqMonolitico)
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	return &strReqMonolitico
+}
+
+func reqMonolitico(w http.ResponseWriter, r *http.Request, codigo string, structDinamico interface{}) string {
+
 	url := configuracion.GetUrlMonolitico() + codigo + "GoServlet"
+
+	pagesJson, err := json.Marshal(structDinamico)
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
 	fmt.Println("URL:>", url)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(pagesJson))
 
@@ -83,7 +103,7 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *s
 
 func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLegajo.Centrodecosto {
 	var centroDeCosto structLegajo.Centrodecosto
-	str := reqMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY")
 	json.Unmarshal([]byte(str), &centroDeCosto)
 	return &centroDeCosto
 }
@@ -101,7 +121,7 @@ func Checkexistecentrodecosto(w http.ResponseWriter, r *http.Request, tokenAuten
 func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
 	var s requestMono
 
-	str := reqMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY")
 	if str == "0" {
 		s.Error = errors.New("La Cuenta con ID: " + id + " no existe")
 	}
@@ -110,7 +130,7 @@ func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacio
 
 func Obtenerbanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLiquidacion.Banco {
 	var banco structLiquidacion.Banco
-	str := reqMonolitico(w, r, tokenAutenticacion, "banco", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "banco", id, "CANQUERY")
 	json.Unmarshal([]byte(str), &banco)
 	return &banco
 }
@@ -128,7 +148,7 @@ func Checkexistebanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion
 func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
 
 	var s requestMono
-	str := reqMonolitico(w, r, tokenAutenticacion, codigo, id, "HLP")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, codigo, id, "HLP")
 
 	var dataHelper []structHelper.Helper
 	json.Unmarshal([]byte(str), &dataHelper)
@@ -139,7 +159,7 @@ func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *stru
 
 func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
 	var emp requestMono
-	str := reqMonolitico(w, r, tokenAutenticacion, codigo, id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, codigo, id, "CANQUERY")
 
 	var dataEmpresa structHelper.Empresa
 	json.Unmarshal([]byte(str), &dataEmpresa)
@@ -183,4 +203,39 @@ func CheckAuthenticationMonolitico(tokenEncode string, r *http.Request) bool {
 	}
 
 	return infoUserValida
+}
+
+func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, id string, options string, codigo string) string {
+
+	var strLiquidacionContabilizar strLiquidacionContabilizar
+	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, id, options)
+
+	if descripcion == "" {
+		descripcion = framework.Descripcionasientomanualcontableliquidacionescontabilizadas
+	}
+	strLiquidacionContabilizar.requestMonolitico = *strReqMonolitico
+	strLiquidacionContabilizar.Descripcion = descripcion
+	strLiquidacionContabilizar.Cuentasimportes = cuentasImportes
+
+	str := reqMonolitico(w, r, codigo, strLiquidacionContabilizar)
+
+	return str
+}
+
+func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, id string, options string, codigo string) *StrDatosAsientoContableManual {
+
+	str := requestMonoliticoContabilizarLiquidaciones(w, r, cuentasImportes, tokenAutenticacion, descripcion, id, options, codigo)
+
+	var datosAsientoContableManual StrDatosAsientoContableManual
+
+	json.Unmarshal([]byte(str), &datosAsientoContableManual)
+
+	return &datosAsientoContableManual
+
+}
+
+func Checkgeneroasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, id string, options string, codigo string) bool {
+
+	//datosAsientoContableManual := Generarasientomanual(w, r, cuentasImportes, tokenAutenticacion, descripcion, id, options, codigo)
+	return true
 }
