@@ -40,11 +40,12 @@ type strLiquidacionContabilizar struct {
 type StrDatosAsientoContableManual struct {
 	Asientocontablemanualid     int    `json:"asientocontablemanualid"`
 	Asientocontablemanualnombre string `json:"asientocontablemanualnombre"`
+	Statuscode                  int    `json:"statuscode"`
 }
 
-func conectarconMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, view string, columnid string, id string, options string) string {
+func conectarconMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, view string, columnid string, id string, options string, servlet string) string {
 	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, id, options, view, columnid)
-	str := reqMonolitico(w, r, view, columnid, strReqMonolitico)
+	str := reqMonolitico(w, r, view, columnid, servlet, strReqMonolitico)
 
 	return str
 
@@ -64,9 +65,9 @@ func llenarstructRequestMonolitico(tokenAutenticacion *structAutenticacion.Secur
 	return &strReqMonolitico
 }
 
-func reqMonolitico(w http.ResponseWriter, r *http.Request, view string, columnid string, structDinamico interface{}) string {
+func reqMonolitico(w http.ResponseWriter, r *http.Request, view string, columnid string, servlet string, structDinamico interface{}) string {
 
-	url := configuracion.GetUrlMonolitico() + "MonoliticComunicationGoServlet"
+	url := configuracion.GetUrlMonolitico() + servlet
 
 	pagesJson, err := json.Marshal(structDinamico)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -107,7 +108,7 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, view string, columnid
 
 func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLegajo.Centrodecosto {
 	var centroDeCosto structLegajo.Centrodecosto
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvcentrodecosto", "centrodecostoid", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvcentrodecosto", "centrodecostoid", id, "CANQUERY", "MonoliticComunicationGoServlet")
 	json.Unmarshal([]byte(str), &centroDeCosto)
 	return &centroDeCosto
 }
@@ -124,7 +125,7 @@ func Checkexistecentrodecosto(w http.ResponseWriter, r *http.Request, tokenAuten
 
 func Obtenercuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structConcepto.Cuenta {
 	var cuenta structConcepto.Cuenta
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvcuenta", "cuentaid", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvcuenta", "cuentaid", id, "CANQUERY", "MonoliticComunicationGoServlet")
 	json.Unmarshal([]byte(str), &cuenta)
 	return &cuenta
 }
@@ -142,7 +143,7 @@ func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacio
 
 func Obtenerbanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLiquidacion.Banco {
 	var banco structLiquidacion.Banco
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvbanco", "bancoid", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvbanco", "bancoid", id, "CANQUERY", "MonoliticComunicationGoServlet")
 	json.Unmarshal([]byte(str), &banco)
 	return &banco
 }
@@ -162,7 +163,7 @@ func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *stru
 	var s requestMono
 	view := "nxv" + codigo
 	columnid := codigo + "id"
-	str := conectarconMonolitico(w, r, tokenAutenticacion, view, columnid, id, "HLP")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, view, columnid, id, "HLP", "MonoliticComunicationGoServlet")
 
 	var dataHelper []structHelper.Helper
 	json.Unmarshal([]byte(str), &dataHelper)
@@ -173,7 +174,7 @@ func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *stru
 
 func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
 	var emp requestMono
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "fafempresa", "empresaid", id, "")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "fafempresa", "empresaid", id, "", "MonoliticComunicationGoServlet")
 
 	var dataEmpresa structHelper.Empresa
 	json.Unmarshal([]byte(str), &dataEmpresa)
@@ -231,7 +232,7 @@ func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.R
 	strLiquidacionContabilizar.Descripcion = descripcion
 	strLiquidacionContabilizar.Cuentasimportes = cuentasImportes
 
-	str := reqMonolitico(w, r, codigo, "", strLiquidacionContabilizar)
+	str := reqMonolitico(w, r, codigo, "", "ContabilizarLiquidacionServlet", strLiquidacionContabilizar)
 
 	return str
 }
@@ -250,6 +251,7 @@ func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImporte
 
 func Checkgeneroasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, id string, options string, codigo string) bool {
 
-	//datosAsientoContableManual := Generarasientomanual(w, r, cuentasImportes, tokenAutenticacion, descripcion, id, options, codigo)
-	return true
+	datosAsientoContableManual := Generarasientomanual(w, r, cuentasImportes, tokenAutenticacion, descripcion, id, options, codigo)
+
+	return datosAsientoContableManual.Statuscode == http.StatusOK
 }
