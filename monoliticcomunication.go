@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/xubiosueldos/conexionBD/Concepto/structConcepto"
+
 	"github.com/xubiosueldos/conexionBD/Autenticacion/structAutenticacion"
 	"github.com/xubiosueldos/conexionBD/Helper/structHelper"
 	"github.com/xubiosueldos/conexionBD/Legajo/structLegajo"
@@ -40,15 +42,15 @@ type StrDatosAsientoContableManual struct {
 	Asientocontablemanualnombre string `json:"asientocontablemanualnombre"`
 }
 
-func conectarconMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string, options string) string {
-	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, id, options)
-	str := reqMonolitico(w, r, codigo, strReqMonolitico)
+func conectarconMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, view string, columnid string, id string, options string) string {
+	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, id, options, view, columnid)
+	str := reqMonolitico(w, r, view, columnid, strReqMonolitico)
 
 	return str
 
 }
 
-func llenarstructRequestMonolitico(tokenAutenticacion *structAutenticacion.Security, id string, options string) *strRequestMonolitico {
+func llenarstructRequestMonolitico(tokenAutenticacion *structAutenticacion.Security, id string, options string, view string, columnid string) *strRequestMonolitico {
 	var strReqMonolitico strRequestMonolitico
 	token := *tokenAutenticacion
 	strReqMonolitico.Options = options
@@ -56,13 +58,15 @@ func llenarstructRequestMonolitico(tokenAutenticacion *structAutenticacion.Secur
 	strReqMonolitico.Token = token.Token
 	strReqMonolitico.Username = token.Username
 	strReqMonolitico.Id = id
+	strReqMonolitico.View = view
+	strReqMonolitico.Columnid = columnid
 
 	return &strReqMonolitico
 }
 
-func reqMonolitico(w http.ResponseWriter, r *http.Request, codigo string, structDinamico interface{}) string {
+func reqMonolitico(w http.ResponseWriter, r *http.Request, view string, columnid string, structDinamico interface{}) string {
 
-	url := configuracion.GetUrlMonolitico() + codigo + "GoServlet"
+	url := configuracion.GetUrlMonolitico() + "MonoliticComunicationGoServlet"
 
 	pagesJson, err := json.Marshal(structDinamico)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -103,7 +107,7 @@ func reqMonolitico(w http.ResponseWriter, r *http.Request, codigo string, struct
 
 func Obtenercentrodecosto(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLegajo.Centrodecosto {
 	var centroDeCosto structLegajo.Centrodecosto
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "centrodecosto", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvcentrodecosto", "centrodecostoid", id, "CANQUERY")
 	json.Unmarshal([]byte(str), &centroDeCosto)
 	return &centroDeCosto
 }
@@ -118,19 +122,27 @@ func Checkexistecentrodecosto(w http.ResponseWriter, r *http.Request, tokenAuten
 	return &s
 }
 
+func Obtenercuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structConcepto.Cuenta {
+	var cuenta structConcepto.Cuenta
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvcuenta", "cuentaid", id, "CANQUERY")
+	json.Unmarshal([]byte(str), &cuenta)
+	return &cuenta
+}
+
 func Checkexistecuenta(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *requestMono {
 	var s requestMono
 
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "cuenta", id, "CANQUERY")
-	if str == "0" {
+	cuenta := Obtenercuenta(w, r, tokenAutenticacion, id)
+	if cuenta.ID == 0 {
 		s.Error = errors.New("La Cuenta con ID: " + id + " no existe")
 	}
+
 	return &s
 }
 
 func Obtenerbanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, id string) *structLiquidacion.Banco {
 	var banco structLiquidacion.Banco
-	str := conectarconMonolitico(w, r, tokenAutenticacion, "banco", id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "nxvbanco", "bancoid", id, "CANQUERY")
 	json.Unmarshal([]byte(str), &banco)
 	return &banco
 }
@@ -148,7 +160,9 @@ func Checkexistebanco(w http.ResponseWriter, r *http.Request, tokenAutenticacion
 func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
 
 	var s requestMono
-	str := conectarconMonolitico(w, r, tokenAutenticacion, codigo, id, "HLP")
+	view := "nxv" + codigo
+	columnid := codigo + "id"
+	str := conectarconMonolitico(w, r, tokenAutenticacion, view, columnid, id, "HLP")
 
 	var dataHelper []structHelper.Helper
 	json.Unmarshal([]byte(str), &dataHelper)
@@ -159,7 +173,7 @@ func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *stru
 
 func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, codigo string, id string) *requestMono {
 	var emp requestMono
-	str := conectarconMonolitico(w, r, tokenAutenticacion, codigo, id, "CANQUERY")
+	str := conectarconMonolitico(w, r, tokenAutenticacion, "fafempresa", "empresaid", id, "")
 
 	var dataEmpresa structHelper.Empresa
 	json.Unmarshal([]byte(str), &dataEmpresa)
@@ -208,7 +222,7 @@ func CheckAuthenticationMonolitico(tokenEncode string, r *http.Request) bool {
 func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, id string, options string, codigo string) string {
 
 	var strLiquidacionContabilizar strLiquidacionContabilizar
-	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, id, options)
+	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, "", "", id, options)
 
 	if descripcion == "" {
 		descripcion = framework.Descripcionasientomanualcontableliquidacionescontabilizadas
@@ -217,7 +231,7 @@ func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.R
 	strLiquidacionContabilizar.Descripcion = descripcion
 	strLiquidacionContabilizar.Cuentasimportes = cuentasImportes
 
-	str := reqMonolitico(w, r, codigo, strLiquidacionContabilizar)
+	str := reqMonolitico(w, r, codigo, "", strLiquidacionContabilizar)
 
 	return str
 }
