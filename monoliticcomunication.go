@@ -173,8 +173,8 @@ func Gethelpers(w http.ResponseWriter, r *http.Request, tokenAutenticacion *stru
 	return &s
 }
 
-func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security) *requestMono {
-	var emp requestMono
+func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security) *structHelper.Empresa {
+
 	str := conectarconMonolitico(w, r, tokenAutenticacion, "fafempresa", "empresaid", "", "", "MonoliticComunicationGoServlet")
 
 	var dataEmpresa structHelper.Empresa
@@ -182,7 +182,7 @@ func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticac
 
 	framework.RespondJSON(w, http.StatusOK, dataEmpresa)
 
-	return &emp
+	return &dataEmpresa
 
 }
 
