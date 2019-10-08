@@ -25,22 +25,23 @@ type requestMono struct {
 	Error error
 }
 
-type strCuentaImporte struct {
+type StrCuentaImporte struct {
 	Cuentaid      int     `json:"cuentaid"`
 	Importecuenta float32 `json:"importecuenta"`
 }
 
 type strLiquidacionContabilizar struct {
-	requestMonolitico          strRequestMonolitico
-	Descripcion                string             `json:"descripcion"`
-	Cuentasimportes            []strCuentaImporte `json:"cuentasimportes"`
-	Asientomanualtransaccionid int                `json:"asientomanualtransaccionid"`
+	Tenant          string             `json:"tenant"`
+	Token           string             `json:"token"`
+	Username        string             `json:"username"`
+	Descripcion     string             `json:"descripcion"`
+	Cuentasimportes []StrCuentaImporte `json:"cuentasimportes"`
+	//Asientomanualtransaccionid int                `json:"asientomanualtransaccionid"`
 }
 
 type StrDatosAsientoContableManual struct {
-	Asientocontablemanualid     int         `json:"asientocontablemanualid"`
-	Asientocontablemanualnombre string      `json:"asientocontablemanualnombre"`
-	Error                       requestMono `json:"error"`
+	Asientocontablemanualid     int    `json:"asientocontablemanualid"`
+	Asientocontablemanualnombre string `json:"asientocontablemanualnombre"`
 }
 
 func conectarconMonolitico(w http.ResponseWriter, r *http.Request, tokenAutenticacion *structAutenticacion.Security, view string, columnid string, id string, options string, servlet string) string {
@@ -220,15 +221,17 @@ func CheckAuthenticationMonolitico(tokenEncode string, r *http.Request) bool {
 	return infoUserValida
 }
 
-func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string) string {
+func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.Request, cuentasImportes []StrCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string) string {
 
 	var strLiquidacionContabilizar strLiquidacionContabilizar
-	strReqMonolitico := llenarstructRequestMonolitico(tokenAutenticacion, "", "", "", "")
+	token := *tokenAutenticacion
 
 	if descripcion == "" {
 		descripcion = framework.Descripcionasientomanualcontableliquidacionescontabilizadas
 	}
-	strLiquidacionContabilizar.requestMonolitico = *strReqMonolitico
+	strLiquidacionContabilizar.Token = token.Token
+	strLiquidacionContabilizar.Tenant = token.Tenant
+	strLiquidacionContabilizar.Username = token.Username
 	strLiquidacionContabilizar.Descripcion = descripcion
 	strLiquidacionContabilizar.Cuentasimportes = cuentasImportes
 
@@ -237,7 +240,7 @@ func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.R
 	return str
 }
 
-func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []strCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string) *StrDatosAsientoContableManual {
+func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []StrCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string) *StrDatosAsientoContableManual {
 
 	str := requestMonoliticoContabilizarLiquidaciones(w, r, cuentasImportes, tokenAutenticacion, descripcion)
 
@@ -249,9 +252,9 @@ func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImporte
 
 }
 
-func Checkgeneroasientomanual(datosAsientoContableManual StrDatosAsientoContableManual) *requestMono {
+func Checkgeneroasientomanual(datosAsientoContableManual *StrDatosAsientoContableManual) *requestMono {
 	var s requestMono
-	if datosAsientoContableManual.Error.Error != nil {
+	if datosAsientoContableManual.Asientocontablemanualid == 0 {
 		s.Error = errors.New("El Asiento Contable Manual no se generó correctamente")
 	}
 
