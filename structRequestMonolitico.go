@@ -7,4 +7,6 @@ type strRequestMonolitico struct {
 	Token    string `json:"token"`
 	Options  string `json:"options"`
 	Id       string `json:"id"`
+	View     string `json:"view"`
+	Columnid string `json:"columnid"`
 }
