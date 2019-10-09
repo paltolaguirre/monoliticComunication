@@ -180,8 +180,6 @@ func Obtenerdatosempresa(w http.ResponseWriter, r *http.Request, tokenAutenticac
 	var dataEmpresa structHelper.Empresa
 	json.Unmarshal([]byte(str), &dataEmpresa)
 
-	framework.RespondJSON(w, http.StatusOK, dataEmpresa)
-
 	return &dataEmpresa
 
 }
