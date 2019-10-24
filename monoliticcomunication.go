@@ -27,7 +27,7 @@ type requestMono struct {
 
 type StrCuentaImporte struct {
 	Cuentaid      int     `json:"cuentaid"`
-	Importecuenta float32 `json:"importecuenta"`
+	Importecuenta float64 `json:"importecuenta"`
 }
 
 type strLiquidacionContabilizar struct {
