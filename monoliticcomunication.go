@@ -36,6 +36,7 @@ type strLiquidacionContabilizar struct {
 	Username        string             `json:"username"`
 	Descripcion     string             `json:"descripcion"`
 	Cuentasimportes []StrCuentaImporte `json:"cuentasimportes"`
+	Fechaasiento    string             `json:"fechaasiento"`
 	//Asientomanualtransaccionid int                `json:"asientomanualtransaccionid"`
 }
 
@@ -219,7 +220,7 @@ func CheckAuthenticationMonolitico(tokenEncode string, r *http.Request) bool {
 	return infoUserValida
 }
 
-func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.Request, cuentasImportes []StrCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string) string {
+func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.Request, cuentasImportes []StrCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, fechaasiento string) string {
 
 	var strLiquidacionContabilizar strLiquidacionContabilizar
 	token := *tokenAutenticacion
@@ -232,15 +233,16 @@ func requestMonoliticoContabilizarLiquidaciones(w http.ResponseWriter, r *http.R
 	strLiquidacionContabilizar.Username = token.Username
 	strLiquidacionContabilizar.Descripcion = descripcion
 	strLiquidacionContabilizar.Cuentasimportes = cuentasImportes
+	strLiquidacionContabilizar.Fechaasiento = fechaasiento
 
 	str := reqMonolitico(w, r, "", "", "ContabilizarLiquidacionServlet", strLiquidacionContabilizar)
 
 	return str
 }
 
-func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []StrCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string) *StrDatosAsientoContableManual {
+func Generarasientomanual(w http.ResponseWriter, r *http.Request, cuentasImportes []StrCuentaImporte, tokenAutenticacion *structAutenticacion.Security, descripcion string, fechaasiento string) *StrDatosAsientoContableManual {
 
-	str := requestMonoliticoContabilizarLiquidaciones(w, r, cuentasImportes, tokenAutenticacion, descripcion)
+	str := requestMonoliticoContabilizarLiquidaciones(w, r, cuentasImportes, tokenAutenticacion, descripcion, fechaasiento)
 
 	var datosAsientoContableManual StrDatosAsientoContableManual
 
