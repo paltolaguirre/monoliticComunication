@@ -12,12 +12,12 @@ import (
 
 	"github.com/xubiosueldos/conexionBD/Concepto/structConcepto"
 
+	"github.com/xubio-inc/sueldos-lib-framework"
+	"github.com/xubio-inc/sueldos-lib-framework/configuracion"
 	"github.com/xubiosueldos/conexionBD/Autenticacion/structAutenticacion"
 	"github.com/xubiosueldos/conexionBD/Helper/structHelper"
 	"github.com/xubiosueldos/conexionBD/Legajo/structLegajo"
 	"github.com/xubiosueldos/conexionBD/Liquidacion/structLiquidacion"
-	"github.com/xubiosueldos/framework"
-	"github.com/xubiosueldos/framework/configuracion"
 )
 
 type requestMono struct {
