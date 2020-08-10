@@ -10,14 +10,14 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/xubiosueldos/conexionBD/Concepto/structConcepto"
+	"github.com/xubio-inc/sueldos-lib-conexionBD/Concepto/structConcepto"
 
 	"github.com/xubio-inc/sueldos-lib-framework"
 	"github.com/xubio-inc/sueldos-lib-framework/configuracion"
-	"github.com/xubiosueldos/conexionBD/Autenticacion/structAutenticacion"
-	"github.com/xubiosueldos/conexionBD/Helper/structHelper"
-	"github.com/xubiosueldos/conexionBD/Legajo/structLegajo"
-	"github.com/xubiosueldos/conexionBD/Liquidacion/structLiquidacion"
+	"github.com/xubio-inc/sueldos-lib-conexionBD/Autenticacion/structAutenticacion"
+	"github.com/xubio-inc/sueldos-lib-conexionBD/Helper/structHelper"
+	"github.com/xubio-inc/sueldos-lib-conexionBD/Legajo/structLegajo"
+	"github.com/xubio-inc/sueldos-lib-conexionBD/Liquidacion/structLiquidacion"
 )
 
 type requestMono struct {
